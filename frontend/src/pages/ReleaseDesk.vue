@@ -54,7 +54,7 @@ function decisionLabel(d) {
           <label>证据包</label>
           <select v-model="packId">
             <option v-for="p in packs" :key="p.id" :value="p.id">
-              {{ p.pack_no }}（{{ ({ built: '已生成', checked_ok: '校验通过', checked_fail: '校验未过', released: '已放行', rejected: '已驳回' })[p.status] || p.status }}）
+              {{ p.pack_no }}（{{ ({ built: '已生成', checked_ok: '校验通过', checked_fail: '校验未过', released: '已放行', rejected: '已驳回', fingerprint_mismatch: '指纹失配', fingerprint_rebuilt: '指纹已重建待复检' })[p.status] || p.status }}）
             </option>
           </select>
         </div>
@@ -94,7 +94,7 @@ function decisionLabel(d) {
               </span>
             </td>
             <td>{{ r.reason }}</td>
-            <td><span class="tag">{{ ({ built: '已生成', checked_ok: '校验通过', checked_fail: '校验未过', released: '已放行', rejected: '已驳回' })[r.pack_status] || r.pack_status }}</span></td>
+            <td><span class="tag">{{ ({ built: '已生成', checked_ok: '校验通过', checked_fail: '校验未过', released: '已放行', rejected: '已驳回', fingerprint_mismatch: '指纹失配', fingerprint_rebuilt: '指纹已重建待复检' })[r.pack_status] || r.pack_status }}</span></td>
             <td class="mono">{{ r.created_at }}</td>
           </tr>
         </tbody>

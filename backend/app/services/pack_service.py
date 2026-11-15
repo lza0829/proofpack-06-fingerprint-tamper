@@ -6,7 +6,12 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.db import connect
-from app.engines.checksum import item_fingerprint, pack_fingerprint
+from app.engines.checksum import (
+    FINGERPRINT_FIELDS,
+    SUMMARY_FIELDS,
+    item_fingerprint,
+    pack_fingerprint,
+)
 from app.repositories import packs as pack_repo
 from app.repositories import samples as sample_repo
 from app.repositories import subjects as subject_repo
@@ -40,6 +45,7 @@ def get_pack(pack_id: int) -> dict[str, Any]:
         p["subject_code"] = s["code"] if s else None
         p["subject_title"] = s["title"] if s else None
         p["items"] = pack_repo.list_items(conn, pack_id)
+        p["fingerprint_state"] = p.get("fingerprint_state") or "ok"
         return p
     finally:
         conn.close()
@@ -58,16 +64,19 @@ def build_pack(batch_id: int) -> dict[str, Any]:
         items_src = []
         for r in rows:
             payload = r.get("payload") if isinstance(r.get("payload"), dict) else {}
-            items_src.append(
-                {
-                    "business_key": r["business_key"],
-                    "title": payload.get("title"),
-                    "amount": payload.get("amount"),
-                    "qty": payload.get("qty"),
-                    "event_ts": payload.get("event_ts") or r.get("event_ts"),
-                    "revision": payload.get("revision") if payload.get("revision") is not None else r.get("revision"),
-                }
-            )
+            item = {
+                "business_key": r["business_key"],
+                "title": payload.get("title"),
+                "amount": payload.get("amount"),
+                "qty": payload.get("qty"),
+                "event_ts": payload.get("event_ts") or r.get("event_ts"),
+                "revision": (
+                    payload.get("revision")
+                    if payload.get("revision") is not None
+                    else r.get("revision")
+                ),
+            }
+            items_src.append({field: item.get(field) for field in FINGERPRINT_FIELDS})
 
         fp = pack_fingerprint(items_src)
         now = _now()
@@ -76,13 +85,7 @@ def build_pack(batch_id: int) -> dict[str, Any]:
 
         pack_items = []
         for it in items_src:
-            summary = {
-                "title": it.get("title"),
-                "amount": it.get("amount"),
-                "qty": it.get("qty"),
-                "event_ts": it.get("event_ts"),
-                "revision": it.get("revision"),
-            }
+            summary = {field: it.get(field) for field in SUMMARY_FIELDS}
             pack_items.append(
                 {
                     "business_key": it["business_key"],
@@ -115,6 +118,8 @@ def build_pack(batch_id: int) -> dict[str, Any]:
             "item_count": len(pack_items),
             "fingerprint": fp,
             "status": "built",
+            "fingerprint_state": "ok",
+            "fingerprint_updated_at": None,
             "created_at": now,
             "items": pack_repo.list_items(conn, pack_id),
         }

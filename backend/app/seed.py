@@ -86,6 +86,8 @@ def init_db() -> None:
                 fingerprint TEXT NOT NULL,
                 status TEXT NOT NULL,
                 created_at TEXT NOT NULL,
+                fingerprint_state TEXT NOT NULL DEFAULT 'ok',
+                fingerprint_updated_at TEXT,
                 FOREIGN KEY(batch_id) REFERENCES sample_batches(id),
                 FOREIGN KEY(subject_id) REFERENCES subjects(id)
             );
@@ -118,6 +120,18 @@ def init_db() -> None:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(pack_id) REFERENCES evidence_packs(id)
             );
+            -- 指纹核验留痕
+            CREATE TABLE IF NOT EXISTS fingerprint_audits(
+                id INTEGER PRIMARY KEY,
+                pack_id INTEGER NOT NULL,
+                event TEXT NOT NULL,
+                policy TEXT NOT NULL,
+                stored_fingerprint TEXT,
+                computed_fingerprint TEXT,
+                detail TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(pack_id) REFERENCES evidence_packs(id)
+            );
             -- 设置
             CREATE TABLE IF NOT EXISTS settings(
                 key TEXT PRIMARY KEY,
@@ -143,6 +157,17 @@ def init_db() -> None:
             );
             """
         )
+        # 旧库补列：证据包指纹状态
+        pack_cols = {
+            r["name"] for r in conn.execute("PRAGMA table_info(evidence_packs)").fetchall()
+        }
+        if "fingerprint_state" not in pack_cols:
+            conn.execute(
+                "ALTER TABLE evidence_packs "
+                "ADD COLUMN fingerprint_state TEXT NOT NULL DEFAULT 'ok'"
+            )
+        if "fingerprint_updated_at" not in pack_cols:
+            conn.execute("ALTER TABLE evidence_packs ADD COLUMN fingerprint_updated_at TEXT")
         if conn.execute("SELECT COUNT(*) c FROM subjects").fetchone()["c"] == 0:
             now = _now()
             for s in SUBJECT_SEEDS:
@@ -174,6 +199,10 @@ def init_db() -> None:
             conn.execute(
                 "INSERT INTO settings(key, value) VALUES (?, ?)",
                 ("sample_mode", "seeded"),
+            )
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES (?, ?)",
+                ("fingerprint_mismatch_policy", "reject_only"),
             )
         conn.commit()
     finally:

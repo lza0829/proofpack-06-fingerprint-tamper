@@ -10,6 +10,7 @@ from app.repositories import checklist as check_repo
 from app.repositories import packs as pack_repo
 from app.repositories import releases as release_repo
 from app.repositories import settings as settings_repo
+from app.services import fingerprint_service
 
 
 def _now() -> str:
@@ -48,6 +49,11 @@ def decide(pack_id: int, decision: str, reason: str | None = None) -> dict[str, 
         pack = pack_repo.get_pack(conn, pack_id)
         if not pack:
             raise HTTPException(status_code=404, detail="证据包不存在")
+
+        if decision == "pass":
+            # 放行前必须按现行包内条目重算指纹并与落库指纹比对；
+            # 失配则按所选策略处置并拒绝放行（处置与留痕已提交）。
+            fingerprint_service.guard_release(conn, pack)
 
         results = check_repo.list_results(conn, pack_id=pack_id)
         if not results:
@@ -89,6 +95,7 @@ def decide(pack_id: int, decision: str, reason: str | None = None) -> dict[str, 
             "reason": reason,
             "created_at": now,
             "checklist_all_passed": all_ok,
+            "fingerprint_verified": True,
         }
     finally:
         conn.close()

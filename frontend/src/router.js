@@ -4,6 +4,7 @@ import Subjects from './pages/Subjects.vue'
 import SampleDesk from './pages/SampleDesk.vue'
 import Packs from './pages/Packs.vue'
 import Checklist from './pages/Checklist.vue'
+import Fingerprint from './pages/Fingerprint.vue'
 import ReleaseDesk from './pages/ReleaseDesk.vue'
 import Settings from './pages/Settings.vue'
 
@@ -15,6 +16,7 @@ export default createRouter({
     { path: '/sample', component: SampleDesk },
     { path: '/packs', component: Packs },
     { path: '/checklist', component: Checklist },
+    { path: '/fingerprint', component: Fingerprint },
     { path: '/release', component: ReleaseDesk },
     { path: '/settings', component: Settings },
   ],

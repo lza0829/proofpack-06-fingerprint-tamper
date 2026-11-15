@@ -50,7 +50,8 @@ def insert_items(
 def list_packs(conn: sqlite3.Connection, limit: int = 50) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT id, pack_no, batch_id, subject_id, item_count, fingerprint, status, created_at
+        SELECT id, pack_no, batch_id, subject_id, item_count, fingerprint, status, created_at,
+               fingerprint_state, fingerprint_updated_at
         FROM evidence_packs
         ORDER BY id DESC
         LIMIT ?
@@ -63,7 +64,8 @@ def list_packs(conn: sqlite3.Connection, limit: int = 50) -> list[dict[str, Any]
 def get_pack(conn: sqlite3.Connection, pack_id: int) -> dict[str, Any] | None:
     row = conn.execute(
         """
-        SELECT id, pack_no, batch_id, subject_id, item_count, fingerprint, status, created_at
+        SELECT id, pack_no, batch_id, subject_id, item_count, fingerprint, status, created_at,
+               fingerprint_state, fingerprint_updated_at
         FROM evidence_packs WHERE id=?
         """,
         (pack_id,),
@@ -92,3 +94,33 @@ def list_items(conn: sqlite3.Connection, pack_id: int) -> list[dict[str, Any]]:
 
 def update_status(conn: sqlite3.Connection, pack_id: int, status: str) -> None:
     conn.execute("UPDATE evidence_packs SET status=? WHERE id=?", (status, pack_id))
+
+
+def set_fingerprint_state(
+    conn: sqlite3.Connection,
+    pack_id: int,
+    state: str,
+    updated_at: str,
+) -> None:
+    conn.execute(
+        "UPDATE evidence_packs SET fingerprint_state=?, fingerprint_updated_at=? WHERE id=?",
+        (state, updated_at, pack_id),
+    )
+
+
+def replace_fingerprint(
+    conn: sqlite3.Connection,
+    pack_id: int,
+    fingerprint: str,
+    item_count: int,
+    updated_at: str,
+) -> None:
+    """按现行条目重建指纹后落库；条款数一并校正。"""
+    conn.execute(
+        """
+        UPDATE evidence_packs
+        SET fingerprint=?, item_count=?, fingerprint_state='ok', fingerprint_updated_at=?
+        WHERE id=?
+        """,
+        (fingerprint, item_count, updated_at, pack_id),
+    )

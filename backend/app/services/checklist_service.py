@@ -9,6 +9,7 @@ from app.db import connect
 from app.repositories import checklist as check_repo
 from app.repositories import packs as pack_repo
 from app.repositories import samples as sample_repo
+from app.services.fingerprint_service import PACK_STATUS_MISMATCH
 
 
 def _now() -> str:
@@ -123,7 +124,12 @@ def run_checklist(pack_id: int) -> dict[str, Any]:
         )
 
         all_ok = all(r["passed"] for r in results)
-        pack_repo.update_status(conn, pack_id, "checked_ok" if all_ok else "checked_fail")
+        if (pack.get("fingerprint_state") or "ok") == "mismatch":
+            # 重新打包消除失配态之前，不得以清单结果覆盖该状态
+            next_status = PACK_STATUS_MISMATCH
+        else:
+            next_status = "checked_ok" if all_ok else "checked_fail"
+        pack_repo.update_status(conn, pack_id, next_status)
         conn.commit()
 
         return {

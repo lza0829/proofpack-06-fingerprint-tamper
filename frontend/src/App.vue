@@ -14,6 +14,7 @@
         <router-link to="/sample">采样台</router-link>
         <router-link to="/packs">证据包</router-link>
         <router-link to="/checklist">校验清单</router-link>
+        <router-link to="/fingerprint">指纹核验</router-link>
         <router-link to="/release">放行台</router-link>
         <router-link to="/settings">设置</router-link>
       </nav>
